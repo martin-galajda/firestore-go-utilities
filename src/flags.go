@@ -7,7 +7,7 @@ import (
 func initFlags() {
 	pathToFirebaseConfigFile = flag.String(
 		"firebase_config_file",
-		"service-account.json",
+		"./.secrets/service-account.json",
 		"Path to config file containing firebase service account credentials.",
 	)
 
