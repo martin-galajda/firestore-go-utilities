@@ -1,0 +1,7 @@
+out/
+
+workspace/*
+!workspace/.gitkeep
+**/.secrets/
+
+**/.DS_Store
