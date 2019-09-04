@@ -11,7 +11,7 @@ import (
 )
 
 var pathToFirebaseConfigFile, firebaseProjectID, command, datasetName *string
-var pathToOutputDir, pathToOutputFile, pathToLabelsFile, pathToLabelboxLabelsOutputFile *string
+var pathToOutputDir, pathToOutputFile, pathToInputsFile, pathToLabelboxLabelsOutputFile *string
 var ctx context.Context
 var firestoreClient *firestore.Client
 var translateClient *translate.Client
@@ -26,7 +26,9 @@ func main() {
 	case "get-images":
 		getImages(ctx, firestoreClient, *datasetName)
 	case "make-labelbox-labels":
-		transformLabelsToLabelBoxFormat(*pathToLabelsFile, *pathToLabelboxLabelsOutputFile)
+		transformLabelsToLabelBoxFormat(*pathToInputsFile, *pathToLabelboxLabelsOutputFile)
+	case "labelbox-annotations-to-validation-annotations":
+		transformLabelboxAnnotations(*pathToInputsFile, *pathToOutputDir)
 	default:
 		flag.PrintDefaults()
 		log.Fatalf("Invalid command for CLI: %v.", command)

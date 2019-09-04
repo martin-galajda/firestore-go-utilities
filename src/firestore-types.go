@@ -1,7 +1,8 @@
 package main
 
 type ProcessedUrlDocumentAnnotatedElementsData struct {
-	Url string `firebase:"url"`
+	Url              string `firebase:"url"`
+	DataAnnotationID string `firebase:"dataAnnotationId"`
 }
 
 type ProcessedUrlDocumentData struct {

@@ -15,3 +15,22 @@ type LabelboxLabelSettings struct {
 	Tools           []*LabelboxToolDef           `json:"tools"`
 	Classifications []*LabelboxClassificationDef `json:"classifications"`
 }
+
+
+// Structs adapting exported JSON file from Labelbox after annotating images
+
+type LabelboxExportLabelGeometry struct {
+	X int32 `json:"x"`
+	Y int32 `json:"y"`
+}
+
+type LabelboxExportLabel struct {
+	Geometry []LabelboxExportLabelGeometry `json:"geometry"`
+}
+
+type LabelboxExportAnnotation struct {
+	ID         string                           `json:"ID"`
+	ImageURL   string                           `json:"Labeled Data"`
+	Labels     map[string][]LabelboxExportLabel `json:"Label"`
+	ExternalID string                           `json:"External ID"`
+}

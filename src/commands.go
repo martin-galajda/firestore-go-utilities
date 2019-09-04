@@ -2,9 +2,16 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
+	"regexp"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"golang.org/x/net/context"
@@ -59,15 +66,17 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 		}
 
 		for _, annotatedElementsData := range processedURLDoc.Data.AnnotatedElementsData {
-			log.Printf("Collected new url: %q.\n", annotatedElementsData.Url)
+			log.Printf("Collected new url: %q. Data  annotation ID: %s.\n", annotatedElementsData.Url, annotatedElementsData.DataAnnotationID)
 			urlsToDownload = append(urlsToDownload, annotatedElementsData.Url)
 		}
 	}
 
 	httpClient := makeHttpClient()
 
+	destinationDirForFiles := *pathToOutputDir + "/export-" + time.Now().Format(time.RFC3339)
+	createDirIfNotExists(destinationDirForFiles)
 	for _, url := range urlsToDownload {
-		downloadFile(httpClient, &url, *pathToOutputDir)
+		downloadAndSaveFile(httpClient, &url, destinationDirForFiles)
 	}
 }
 
@@ -104,5 +113,60 @@ func transformLabelsToLabelBoxFormat(pathToLabelsFile, pathToOutputFile string) 
 
 	if err != nil {
 		log.Fatalf("Error writing labels for Labelbox to JSON file: %v", err)
+	}
+}
+
+func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir string) {
+	f, err := os.Open(pathToLabelboxAnnotationsFile)
+
+	if err != nil {
+		log.Fatalf("Error opening file for transforming exported labelbox annotations. Filepath: %q, error: %v", pathToLabelboxAnnotationsFile, err)
+	}
+
+	fileBytes, err := ioutil.ReadAll(f)
+
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+
+	exportedAnnotations := []LabelboxExportAnnotation{}
+	json.Unmarshal(fileBytes, &exportedAnnotations)
+
+	rowsForFiles := map[string][][]string{}
+
+	// regex that will replace translated part of the label - the stuff in brackets e.g -> Human(Clovek) --> Human
+	labelTranslationRe := regexp.MustCompile(`\(.+\)$`)
+	for _, exportedAnnotation := range exportedAnnotations {
+		fileID := exportedAnnotation.ExternalID
+		rows := [][]string{}
+
+		for class, classLabels := range exportedAnnotation.Labels {
+			classWithoutTranslation := labelTranslationRe.ReplaceAllString(class, "")
+			for _, labelGeometry := range classLabels {
+				fmt.Println(classWithoutTranslation)
+
+				topLeft := labelGeometry.Geometry[0]
+				bottomRight := labelGeometry.Geometry[3]
+				str := fmt.Sprint
+				row := []string{classWithoutTranslation, str(topLeft.X), str(topLeft.Y), str(bottomRight.X), str(bottomRight.Y)}
+				rows = append(rows, row)
+			}
+		}
+
+		rowsForFiles[fileID] = rows
+	}
+
+	err = createDirIfNotExists(pathToOutputDir)
+	if err != nil {
+		log.Panicf("Failed to create output directory for transformed labelbox annotations. Error: %v", err)
+	}
+
+	for fileID, rows := range rowsForFiles {
+		fmt.Println(fileID)
+		fmt.Println(rows)
+		outFilePath := path.Join(pathToOutputDir, fileID+".txt")
+		outFile := createFile(&outFilePath)
+		csvWriter := csv.NewWriter(outFile)
+		csvWriter.WriteAll(rows)
 	}
 }

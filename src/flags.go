@@ -25,18 +25,18 @@ func initFlags() {
 
 	pathToOutputDir = flag.String(
 		"out_dir",
-		"./out",
+		"./out/images",
 		"Path to the output directory.",
 	)
 
 	command = flag.String(
 		"command",
 		"get-images",
-		"Command to execute. One of the [get-images, make-labelbox-labels].",
+		"Command to execute. One of the [get-images, make-labelbox-labels, labelbox-annotations-to-validation-annotations].",
 	)
 
-	pathToLabelsFile = flag.String(
-		"path_to_labels_csv",
+	pathToInputsFile = flag.String(
+		"input_path",
 		"../data/class-descriptions-boxable.csv",
 		"Path to the file containing labels for OpenImages in form of original CSV file.",
 	)

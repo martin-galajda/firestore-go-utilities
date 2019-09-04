@@ -1,46 +1,65 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
-	"strings"
 
+	"encoding/base64"
 	"encoding/json"
+	"path/filepath"
 )
 
-func downloadFile(client *http.Client, url *string, pathToOutputDir string) {
+func downloadAndSaveFile(client *http.Client, url *string, pathToOutputDir string) {
 	resp, err := client.Get(*url)
 	if err != nil {
 		log.Fatalf("Error occurred when downloading image file from URL: %q. Error: %v", *url, err)
 	}
 	defer resp.Body.Close()
 
-	filename := buildFilename(url)
-	fullPath := path.Join(pathToOutputDir, *filename)
+	filename, err := buildFilename(url)
+
+	if err != nil {
+		log.Printf("Failed to export file with url: %q\n. Skipping...", *url)
+		return
+	}
+
+	fullPath := path.Join(pathToOutputDir, filename)
 
 	file := createFile(&fullPath)
 
 	size, err := io.Copy(file, resp.Body)
 	defer file.Close()
 
-	log.Printf("Downloaded a file %q with size %d\n", *filename, size)
+	log.Printf("Downloaded and saved a file %q with size %d\n", filename, size)
 }
 
-func buildFilename(fullUrl *string) *string {
-	fileUrl, err := url.Parse(*fullUrl)
+func buildFilename(fullURL *string) (string, error) {
+	ext := filepath.Ext(*fullURL)
 
-	if err != nil {
-		log.Fatalf("Error occurred when parsing URL: %q. Error: %v", *fullUrl, err)
+	if ext == "" {
+		errMsg := fmt.Sprintf("Couldn't extract extension from URL: %q. Skipping import...", *fullURL)
+		err := fmt.Errorf(errMsg)
+		log.Printf("Couldn't extract extension from URL: %q. Skipping import...", *fullURL)
+
+		return "", err
 	}
 
-	path := fileUrl.Path
-	filename := strings.ReplaceAll(fileUrl.Host, "/", "_") + "_" + strings.ReplaceAll(path, "/", "_")
+	return base64.URLEncoding.EncodeToString([]byte(*fullURL)) + ext, nil
+	// fileURL, err := url.Parse(*fullURL)
 
-	return &filename
+	// if err != nil {
+	// 	log.Fatalf("Error occurred when parsing URL: %q. Error: %v", *fullURL, err)
+	// }
+
+	// path := fileURL.Path
+	// filename := strings.ReplaceAll(fileURL.Host, "/", "_") + "_" + strings.ReplaceAll(path, "/", "_")
+
+	// return &filename
+	// return fullURL
 }
 
 func createFile(filename *string) *os.File {
@@ -51,6 +70,21 @@ func createFile(filename *string) *os.File {
 	}
 
 	return file
+}
+
+func createDirIfNotExists(dirPath string) error {
+	_, fileStatErr := os.Stat(dirPath)
+	if fileStatErr == nil {
+		log.Printf("Directory %q already exists. Skipping.\n", dirPath)
+	}
+
+	err := os.MkdirAll(dirPath, 0777)
+
+	if err != nil {
+		log.Printf("Error occured creating directory: %q. Error: %v\n", dirPath, err)
+	}
+
+	return err
 }
 
 func writeJSON(filename *string, v interface{}) error {
