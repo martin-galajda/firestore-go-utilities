@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/AvraamMavridis/randomcolor"
-	"github.com/google/uuid"
 )
 
 func NewLabelboxLabelSettings() *LabelboxLabelSettings {
@@ -19,15 +18,8 @@ func NewLabelboxLabelSettings() *LabelboxLabelSettings {
 }
 
 func (s *LabelboxLabelSettings) AddToolDefinition(mid, labelName string) {
-	featSchemaUUID, err := uuid.NewRandom()
-	if err != nil {
-		panic(err)
-	}
-
-	schemaNodeUUID, err := uuid.NewRandom()
-	if err != nil {
-		panic(err)
-	}
+	featSchemaUUID := makeUUID()
+	schemaNodeUUID := makeUUID()
 
 	translatedLabel, err := translateLabel(labelName)
 
@@ -41,7 +33,7 @@ func (s *LabelboxLabelSettings) AddToolDefinition(mid, labelName string) {
 		Name:            name,
 		Color:           randomcolor.GetRandomColorInHex(),
 		Tool:            LabelboxToolRectangle,
-		FeatureSchemaID: featSchemaUUID.String(),
-		SchemaNodeID:    schemaNodeUUID.String(),
+		FeatureSchemaID: featSchemaUUID,
+		SchemaNodeID:    schemaNodeUUID,
 	})
 }

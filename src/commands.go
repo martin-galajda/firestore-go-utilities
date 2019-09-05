@@ -30,13 +30,10 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 	}
 
 	urlsToDownload := []string{}
-
-	count := 0
-	maxCount := 1
+	fileIds := []string{}
+	filenamesMetadata := [][]string{}
 
 	for {
-		count++
-
 		docRef, errRefIterator := documentRefIterator.Next()
 		if errRefIterator == iterator.Done {
 			break
@@ -45,10 +42,6 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 		if errRefIterator != nil {
 			log.Printf("Error getting document ref. Err: %v", errRefIterator)
 			continue
-		}
-
-		if count > maxCount {
-			break
 		}
 
 		docSnapshot, errRef := docRef.Get(ctx)
@@ -67,7 +60,15 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 
 		for _, annotatedElementsData := range processedURLDoc.Data.AnnotatedElementsData {
 			log.Printf("Collected new url: %q. Data  annotation ID: %s.\n", annotatedElementsData.Url, annotatedElementsData.DataAnnotationID)
+
+			fileID := annotatedElementsData.DataAnnotationID
+			if fileID == "" {
+				fileID = makeUUID()
+			}
+
 			urlsToDownload = append(urlsToDownload, annotatedElementsData.Url)
+			fileIds = append(fileIds, fileID)
+			filenamesMetadata = append(filenamesMetadata, []string{fileID, annotatedElementsData.Url})
 		}
 	}
 
@@ -75,9 +76,14 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 
 	destinationDirForFiles := *pathToOutputDir + "/export-" + time.Now().Format(time.RFC3339)
 	createDirIfNotExists(destinationDirForFiles)
-	for _, url := range urlsToDownload {
-		downloadAndSaveFile(httpClient, &url, destinationDirForFiles)
+	for idx, url := range urlsToDownload {
+		downloadAndSaveFile(httpClient, &url, fileIds[idx], destinationDirForFiles)
 	}
+
+	metadataFilenamePath := path.Join(destinationDirForFiles, "filenames_metadata.csv")
+	metadataFilenamesFile := createFile(&metadataFilenamePath)
+
+	csv.NewWriter(metadataFilenamesFile).WriteAll(filenamesMetadata)
 }
 
 func transformLabelsToLabelBoxFormat(pathToLabelsFile, pathToOutputFile string) {
@@ -142,6 +148,9 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 
 		for class, classLabels := range exportedAnnotation.Labels {
 			classWithoutTranslation := labelTranslationRe.ReplaceAllString(class, "")
+			classWithoutTranslation = regexp.MustCompile(`\s`).ReplaceAllString(classWithoutTranslation, "")
+			classWithoutTranslation = strings.ToLower(classWithoutTranslation)
+
 			for _, labelGeometry := range classLabels {
 				fmt.Println(classWithoutTranslation)
 
@@ -167,6 +176,7 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 		outFilePath := path.Join(pathToOutputDir, fileID+".txt")
 		outFile := createFile(&outFilePath)
 		csvWriter := csv.NewWriter(outFile)
+		csvWriter.Comma = rune(" "[0])
 		csvWriter.WriteAll(rows)
 	}
 }

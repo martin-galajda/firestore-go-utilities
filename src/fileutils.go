@@ -7,20 +7,20 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 
-	"encoding/base64"
 	"encoding/json"
 	"path/filepath"
 )
 
-func downloadAndSaveFile(client *http.Client, url *string, pathToOutputDir string) {
+func downloadAndSaveFile(client *http.Client, url *string, fileId string, pathToOutputDir string) {
 	resp, err := client.Get(*url)
 	if err != nil {
 		log.Fatalf("Error occurred when downloading image file from URL: %q. Error: %v", *url, err)
 	}
 	defer resp.Body.Close()
 
-	filename, err := buildFilename(url)
+	filename, err := buildFilename(url, fileId)
 
 	if err != nil {
 		log.Printf("Failed to export file with url: %q\n. Skipping...", *url)
@@ -37,7 +37,7 @@ func downloadAndSaveFile(client *http.Client, url *string, pathToOutputDir strin
 	log.Printf("Downloaded and saved a file %q with size %d\n", filename, size)
 }
 
-func buildFilename(fullURL *string) (string, error) {
+func buildFilename(fullURL *string, fileID string) (string, error) {
 	ext := filepath.Ext(*fullURL)
 
 	if ext == "" {
@@ -48,7 +48,10 @@ func buildFilename(fullURL *string) (string, error) {
 		return "", err
 	}
 
-	return base64.URLEncoding.EncodeToString([]byte(*fullURL)) + ext, nil
+	// get rid of query string from URL
+	ext = regexp.MustCompile(`\?.+$`).ReplaceAllString(ext, "")
+
+	return fileID + ext, nil
 	// fileURL, err := url.Parse(*fullURL)
 
 	// if err != nil {
