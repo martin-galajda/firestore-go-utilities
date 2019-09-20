@@ -10,7 +10,6 @@ import (
 	"regexp"
 
 	"encoding/json"
-	"path/filepath"
 )
 
 func downloadAndSaveFile(client *http.Client, url *string, fileId string, pathToOutputDir string) {
@@ -38,7 +37,9 @@ func downloadAndSaveFile(client *http.Client, url *string, fileId string, pathTo
 }
 
 func buildFilename(fullURL *string, fileID string) (string, error) {
-	ext := filepath.Ext(*fullURL)
+	// get rid of query string from URL
+	*fullURL = regexp.MustCompile(`\?.+$`).ReplaceAllString(*fullURL, "")
+	ext := getFilepathExtension(*fullURL)
 
 	if ext == "" {
 		errMsg := fmt.Sprintf("Couldn't extract extension from URL: %q. Skipping import...", *fullURL)
@@ -48,8 +49,6 @@ func buildFilename(fullURL *string, fileID string) (string, error) {
 		return "", err
 	}
 
-	// get rid of query string from URL
-	ext = regexp.MustCompile(`\?.+$`).ReplaceAllString(ext, "")
 
 	return fileID + ext, nil
 	// fileURL, err := url.Parse(*fullURL)

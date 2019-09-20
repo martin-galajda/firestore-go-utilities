@@ -34,3 +34,29 @@ type LabelboxExportAnnotation struct {
 	Labels     map[string][]LabelboxExportLabel `json:"Label"`
 	ExternalID string                           `json:"External ID"`
 }
+
+
+func (label *LabelboxExportLabel) getBoundingBoxPoints() (LabelboxExportLabelGeometry, LabelboxExportLabelGeometry) {
+	xCoords := []int32{}
+	yCoords := []int32{}
+
+	const MaxInt = int(^uint(0) >> 1)
+	const MinInt = -MaxInt - 1
+
+
+	for _, point := range label.Geometry {
+		xCoords = append(xCoords, point.X)
+		yCoords = append(yCoords, point.Y)
+	}
+
+	leftTopPoint := LabelboxExportLabelGeometry{}
+	rightBottomPoint := LabelboxExportLabelGeometry{}
+
+	leftTopPoint.X = min(xCoords...)
+	leftTopPoint.Y = min(yCoords...)
+
+	rightBottomPoint.X = max(xCoords...)
+	rightBottomPoint.Y = max(yCoords...)
+
+	return leftTopPoint, rightBottomPoint
+}

@@ -154,10 +154,10 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 			for _, labelGeometry := range classLabels {
 				fmt.Println(classWithoutTranslation)
 
-				topLeft := labelGeometry.Geometry[0]
-				bottomRight := labelGeometry.Geometry[3]
+				leftTopPoint, rightBottomPoint := labelGeometry.getBoundingBoxPoints()
+
 				str := fmt.Sprint
-				row := []string{classWithoutTranslation, str(topLeft.X), str(topLeft.Y), str(bottomRight.X), str(bottomRight.Y)}
+				row := []string{classWithoutTranslation, str(leftTopPoint.X), str(leftTopPoint.Y), str(rightBottomPoint.X), str(rightBottomPoint.Y)}
 				rows = append(rows, row)
 			}
 		}
@@ -170,10 +170,16 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 		log.Panicf("Failed to create output directory for transformed labelbox annotations. Error: %v", err)
 	}
 
+	currentDirOutput := path.Join(pathToOutputDir, trimFilepathExtension(getFilenameFromFilepath(pathToLabelboxAnnotationsFile)))
+	err = createDirIfNotExists(currentDirOutput)
+	if err != nil {
+		log.Panicf("Failed to create output directory for transformed labelbox annotations. Error: %v", err)
+	}
+
 	for fileID, rows := range rowsForFiles {
 		fmt.Println(fileID)
 		fmt.Println(rows)
-		outFilePath := path.Join(pathToOutputDir, fileID+".txt")
+		outFilePath := path.Join(currentDirOutput, fileID+".txt")
 		outFile := createFile(&outFilePath)
 		csvWriter := csv.NewWriter(outFile)
 		csvWriter.Comma = rune(" "[0])
