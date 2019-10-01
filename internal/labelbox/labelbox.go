@@ -1,9 +1,8 @@
-package main
+package labelbox
 
 import (
-	"log"
-
 	"github.com/AvraamMavridis/randomcolor"
+	"github.com/martin-galajda/firestore-go-utilities/internal/uuid"
 )
 
 func NewLabelboxLabelSettings() *LabelboxLabelSettings {
@@ -17,16 +16,11 @@ func NewLabelboxLabelSettings() *LabelboxLabelSettings {
 	return settings
 }
 
-func (s *LabelboxLabelSettings) AddToolDefinition(mid, labelName string) {
-	featSchemaUUID := makeUUID()
-	schemaNodeUUID := makeUUID()
+func (s *LabelboxLabelSettings) AddToolDefinition(mid, labelName, translatedLabel string) {
+	featSchemaUUID := uuid.MakeUUID()
+	schemaNodeUUID := uuid.MakeUUID()
 
-	translatedLabel, err := translateLabel(labelName)
-
-	if err != nil {
-		log.Fatalf("Error translating label %q: %v", labelName, err)
-	}
-	name := labelName + "(" + *translatedLabel + ")"
+	name := labelName + "(" + translatedLabel + ")"
 
 	s.Tools = append(s.Tools, &LabelboxToolDef{
 		Mid:             mid,

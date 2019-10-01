@@ -1,10 +1,14 @@
-package main
+package commands
 
 import (
 	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/martin-galajda/firestore-go-utilities/internal/fileutils"
+	"github.com/martin-galajda/firestore-go-utilities/internal/httputils"
+	"github.com/martin-galajda/firestore-go-utilities/internal/labelbox"
+	"github.com/martin-galajda/firestore-go-utilities/internal/uuid"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,12 +17,15 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/firestore"
+	googleFirestore "cloud.google.com/go/firestore"
 	"golang.org/x/net/context"
 	"google.golang.org/api/iterator"
+	"github.com/martin-galajda/firestore-go-utilities/internal/googleapis"
+	"github.com/martin-galajda/firestore-go-utilities/internal/firestore"
 )
 
-func getImages(ctx context.Context, client *firestore.Client, dataset string) {
+// GetImages gets images marked as important from Firestore database.
+func GetImages(ctx context.Context, client *googleFirestore.Client, dataset, pathToOutputDir string) {
 	worksessionColRef := client.Collection("workSessions")
 	datasetWorkSessionDocRef := worksessionColRef.Doc(dataset)
 	processedURLColRef := datasetWorkSessionDocRef.Collection("processedUrls")
@@ -50,7 +57,7 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 			continue
 		}
 
-		var processedURLDoc ProcessedUrlDocument
+		var processedURLDoc firestore.ProcessedUrlDocument
 		errSnapshot := docSnapshot.DataTo(&processedURLDoc)
 
 		if errSnapshot != nil {
@@ -63,7 +70,7 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 
 			fileID := annotatedElementsData.DataAnnotationID
 			if fileID == "" {
-				fileID = makeUUID()
+				fileID = uuid.MakeUUID()
 			}
 
 			urlsToDownload = append(urlsToDownload, annotatedElementsData.Url)
@@ -72,21 +79,23 @@ func getImages(ctx context.Context, client *firestore.Client, dataset string) {
 		}
 	}
 
-	httpClient := makeHttpClient()
+	httpClient := httputils.NewHTTPClient()
 
-	destinationDirForFiles := *pathToOutputDir + "/export-" + time.Now().Format(time.RFC3339)
-	createDirIfNotExists(destinationDirForFiles)
+	destinationDirForFiles := pathToOutputDir + "/export-" + time.Now().Format(time.RFC3339)
+	fileutils.CreateDirIfNotExists(destinationDirForFiles)
 	for idx, url := range urlsToDownload {
-		downloadAndSaveFile(httpClient, &url, fileIds[idx], destinationDirForFiles)
+		fileutils.DownloadAndSaveFile(httpClient, &url, fileIds[idx], destinationDirForFiles)
 	}
 
 	metadataFilenamePath := path.Join(destinationDirForFiles, "filenames_metadata.csv")
-	metadataFilenamesFile := createFile(&metadataFilenamePath)
+	metadataFilenamesFile := fileutils.CreateFile(&metadataFilenamePath)
 
 	csv.NewWriter(metadataFilenamesFile).WriteAll(filenamesMetadata)
 }
 
-func transformLabelsToLabelBoxFormat(pathToLabelsFile, pathToOutputFile string) {
+// TransformLabelsToLabelBoxFormat transforms OpenImages labels(=classes)
+// to format needed for importing labels into LabelBox.
+func TransformLabelsToLabelBoxFormat(translator googleapis.Translator, pathToLabelsFile, pathToOutputFile string) {
 	f, err := os.Open(pathToLabelsFile)
 
 	if err != nil {
@@ -95,7 +104,7 @@ func transformLabelsToLabelBoxFormat(pathToLabelsFile, pathToOutputFile string) 
 
 	fileReader := bufio.NewScanner(f)
 
-	res := NewLabelboxLabelSettings()
+	res := labelbox.NewLabelboxLabelSettings()
 
 	for fileReader.Scan() {
 		line := fileReader.Text()
@@ -112,17 +121,26 @@ func transformLabelsToLabelBoxFormat(pathToLabelsFile, pathToOutputFile string) 
 		}
 
 		mid, label := tokens[0], tokens[1]
-		res.AddToolDefinition(mid, label)
+
+		translatedLabel, err := translator.Translate(label)
+
+		if err != nil {
+			log.Fatalf("Error occurred when translating label: %v.", err)
+		}
+
+		res.AddToolDefinition(mid, label, translatedLabel)
 	}
 
-	err = writeJSON(&pathToOutputFile, res)
+	err = fileutils.WriteJSON(&pathToOutputFile, res)
 
 	if err != nil {
 		log.Fatalf("Error writing labels for Labelbox to JSON file: %v", err)
 	}
 }
 
-func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir string) {
+// TransformLabelboxAnnotations transforms exported annotations from Labelbox
+// to format
+func TransformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir string) {
 	f, err := os.Open(pathToLabelboxAnnotationsFile)
 
 	if err != nil {
@@ -135,8 +153,12 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 		log.Fatalf("Error reading file: %v", err)
 	}
 
-	exportedAnnotations := []LabelboxExportAnnotation{}
-	json.Unmarshal(fileBytes, &exportedAnnotations)
+	exportedAnnotations := []labelbox.LabelboxExportAnnotation{}
+	err = json.Unmarshal(fileBytes, &exportedAnnotations)
+
+	if err != nil {
+		log.Fatalf("Error Unmarshaling expoted annotations: %s", err)
+	}
 
 	rowsForFiles := map[string][][]string{}
 
@@ -154,10 +176,16 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 			for _, labelGeometry := range classLabels {
 				fmt.Println(classWithoutTranslation)
 
-				leftTopPoint, rightBottomPoint := labelGeometry.getBoundingBoxPoints()
+				leftTopPoint, rightBottomPoint := labelGeometry.GetBoundingBoxPoints()
 
 				str := fmt.Sprint
-				row := []string{classWithoutTranslation, str(leftTopPoint.X), str(leftTopPoint.Y), str(rightBottomPoint.X), str(rightBottomPoint.Y)}
+				row := []string{
+					classWithoutTranslation,
+					str(leftTopPoint.X),
+					str(leftTopPoint.Y),
+					str(rightBottomPoint.X),
+					str(rightBottomPoint.Y),
+				}
 				rows = append(rows, row)
 			}
 		}
@@ -165,13 +193,13 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 		rowsForFiles[fileID] = rows
 	}
 
-	err = createDirIfNotExists(pathToOutputDir)
+	err = fileutils.CreateDirIfNotExists(pathToOutputDir)
 	if err != nil {
 		log.Panicf("Failed to create output directory for transformed labelbox annotations. Error: %v", err)
 	}
 
-	currentDirOutput := path.Join(pathToOutputDir, trimFilepathExtension(getFilenameFromFilepath(pathToLabelboxAnnotationsFile)))
-	err = createDirIfNotExists(currentDirOutput)
+	currentDirOutput := path.Join(pathToOutputDir, fileutils.GetFilenameFromFilepath(pathToLabelboxAnnotationsFile))
+	err = fileutils.CreateDirIfNotExists(currentDirOutput)
 	if err != nil {
 		log.Panicf("Failed to create output directory for transformed labelbox annotations. Error: %v", err)
 	}
@@ -180,7 +208,7 @@ func transformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 		fmt.Println(fileID)
 		fmt.Println(rows)
 		outFilePath := path.Join(currentDirOutput, fileID+".txt")
-		outFile := createFile(&outFilePath)
+		outFile := fileutils.CreateFile(&outFilePath)
 		csvWriter := csv.NewWriter(outFile)
 		csvWriter.Comma = rune(" "[0])
 		csvWriter.WriteAll(rows)

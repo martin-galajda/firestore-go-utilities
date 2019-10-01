@@ -4,7 +4,7 @@ import (
 	"flag"
 )
 
-func initFlags() {
+func parseCLIFlags() {
 	pathToFirebaseConfigFile = flag.String(
 		"firebase_config_file",
 		"./.secrets/service-account.json",
@@ -31,7 +31,7 @@ func initFlags() {
 
 	command = flag.String(
 		"command",
-		"get-images",
+		"",
 		"Command to execute. One of the [get-images, make-labelbox-labels, labelbox-annotations-to-validation-annotations].",
 	)
 

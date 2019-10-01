@@ -1,4 +1,4 @@
-package main
+package fileutils
 
 import (
 	"fmt"
@@ -12,14 +12,14 @@ import (
 	"encoding/json"
 )
 
-func downloadAndSaveFile(client *http.Client, url *string, fileId string, pathToOutputDir string) {
+func DownloadAndSaveFile(client *http.Client, url *string, fileId string, pathToOutputDir string) {
 	resp, err := client.Get(*url)
 	if err != nil {
 		log.Fatalf("Error occurred when downloading image file from URL: %q. Error: %v", *url, err)
 	}
 	defer resp.Body.Close()
 
-	filename, err := buildFilename(url, fileId)
+	filename, err := BuildFilename(url, fileId)
 
 	if err != nil {
 		log.Printf("Failed to export file with url: %q\n. Skipping...", *url)
@@ -28,7 +28,7 @@ func downloadAndSaveFile(client *http.Client, url *string, fileId string, pathTo
 
 	fullPath := path.Join(pathToOutputDir, filename)
 
-	file := createFile(&fullPath)
+	file := CreateFile(&fullPath)
 
 	size, err := io.Copy(file, resp.Body)
 	defer file.Close()
@@ -36,7 +36,7 @@ func downloadAndSaveFile(client *http.Client, url *string, fileId string, pathTo
 	log.Printf("Downloaded and saved a file %q with size %d\n", filename, size)
 }
 
-func buildFilename(fullURL *string, fileID string) (string, error) {
+func BuildFilename(fullURL *string, fileID string) (string, error) {
 	// get rid of query string from URL
 	*fullURL = regexp.MustCompile(`\?.+$`).ReplaceAllString(*fullURL, "")
 	ext := getFilepathExtension(*fullURL)
@@ -51,20 +51,11 @@ func buildFilename(fullURL *string, fileID string) (string, error) {
 
 
 	return fileID + ext, nil
-	// fileURL, err := url.Parse(*fullURL)
-
-	// if err != nil {
-	// 	log.Fatalf("Error occurred when parsing URL: %q. Error: %v", *fullURL, err)
-	// }
-
-	// path := fileURL.Path
-	// filename := strings.ReplaceAll(fileURL.Host, "/", "_") + "_" + strings.ReplaceAll(path, "/", "_")
-
-	// return &filename
-	// return fullURL
 }
 
-func createFile(filename *string) *os.File {
+// CreateFile creates file in case it does not exist.
+// It terminates program in case anything goes wrong.
+func CreateFile(filename *string) *os.File {
 	file, err := os.Create(*filename)
 
 	if err != nil {
@@ -74,7 +65,9 @@ func createFile(filename *string) *os.File {
 	return file
 }
 
-func createDirIfNotExists(dirPath string) error {
+// CreateDirIfNotExists creates directory
+// in case it does not exist.
+func CreateDirIfNotExists(dirPath string) error {
 	_, fileStatErr := os.Stat(dirPath)
 	if fileStatErr == nil {
 		log.Printf("Directory %q already exists. Skipping.\n", dirPath)
@@ -89,8 +82,10 @@ func createDirIfNotExists(dirPath string) error {
 	return err
 }
 
-func writeJSON(filename *string, v interface{}) error {
-	file := createFile(filename)
+// WriteJSON encodes any value as JSON
+// and saves it to the file specified by filename.
+func WriteJSON(filename *string, v interface{}) error {
+	file := CreateFile(filename)
 
 	encoder := json.NewEncoder(file)
 

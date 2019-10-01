@@ -6,3 +6,6 @@ workspace/*
 **/.secrets/
 
 **/.DS_Store
+
+bin/*
+!bin/.gitkeep

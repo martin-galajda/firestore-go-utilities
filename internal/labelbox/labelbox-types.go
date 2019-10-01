@@ -1,4 +1,6 @@
-package main
+package labelbox
+
+import "github.com/martin-galajda/firestore-go-utilities/internal/mathutils"
 
 type LabelboxToolDef struct {
 	Mid             string `json:"mid"`
@@ -16,6 +18,8 @@ type LabelboxLabelSettings struct {
 	Classifications []*LabelboxClassificationDef `json:"classifications"`
 }
 
+var min = mathutils.Min
+var max = mathutils.Max
 
 // Structs adapting exported JSON file from Labelbox after annotating images
 
@@ -35,8 +39,8 @@ type LabelboxExportAnnotation struct {
 	ExternalID string                           `json:"External ID"`
 }
 
-
-func (label *LabelboxExportLabel) getBoundingBoxPoints() (LabelboxExportLabelGeometry, LabelboxExportLabelGeometry) {
+// GetBoundingBoxPoints returns Geometry of topleft and bottomright point of the bounding box
+func (label *LabelboxExportLabel) GetBoundingBoxPoints() (LabelboxExportLabelGeometry, LabelboxExportLabelGeometry) {
 	xCoords := []int32{}
 	yCoords := []int32{}
 

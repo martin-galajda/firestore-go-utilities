@@ -1,20 +1,25 @@
 SHELL := bash
 
-export GOPATH := $(shell pwd)/workspace
-export TARGET_DIR = $(GOPATH)/src/github.com/martinGalajdaSchool/go-cli
-export PATH := $(GOPATH)/bin:$(PATH)
+export PROJECT_ROOT := $(shell pwd)/
+export TARGET_DIR = $(GOPATH)/src/github.com/martin-galajda/firestore-go-utilities/main
+export TARGET_EXECUTABLE_PATH = ./bin/cli
+export PATH := ./bin:$(PATH)
 
 install: 
 	@echo "GOPATH=$(GOPATH)"
 	mkdir -p $(TARGET_DIR)
 	cp -r ./src/* $(TARGET_DIR)
-	go install github.com/martinGalajdaSchool/go-cli
+	go install github.com/martin-galajda/firestore-go-utilities/main
 
-run-get-images: install
-	go-cli -command=get-images
+build-cli:
+	@echo Building CLI...
+	go build -o $(TARGET_EXECUTABLE_PATH) ./cmd/cli
 
-run-make-labelbox-labels: install
-	go-cli -command=make-labelbox-labels
+run-get-images: build-cli
+	cli -command=get-images
 
-run-labelbox-annotations-to-validation: install
-	go-cli -command=labelbox-annotations-to-validation-annotations -input_path=./out/export-2019-09-04T10_02_45.464Z.json -out_dir=./out/validation-annotations
+run-make-labelbox-labels: build-cli
+	cli -command=make-labelbox-labels
+
+run-labelbox-annotations-to-validation: build-cli
+	cli -command=labelbox-annotations-to-validation-annotations -input_path=./out/export-2019-09-20T08_12_10.802Z.json -out_dir=./out/validation-annotations

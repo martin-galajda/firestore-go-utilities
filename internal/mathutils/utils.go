@@ -1,9 +1,10 @@
-package main
+package mathutils
 
 const maxInt32 = int32(^uint32(0) >> 1)
 const minInt32 = -maxInt32 - 1
 
-func min(values ...int32) int32 {
+// Min computes minimum value from arbitrary number of arguments provided
+func Min(values ...int32) int32 {
 	minValue := maxInt32
 
 	for _, val := range values {
@@ -15,7 +16,8 @@ func min(values ...int32) int32 {
 	return minValue
 }
 
-func max(values ...int32) int32 {
+// Max computes maximum value from arbitrary number of arguments provided
+func Max(values ...int32) int32 {
 	maxValue := minInt32
 
 	for _, val := range values {

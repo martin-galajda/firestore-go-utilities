@@ -1,4 +1,4 @@
-package main
+package firestore
 
 type ProcessedUrlDocumentAnnotatedElementsData struct {
 	Url              string `firebase:"url"`

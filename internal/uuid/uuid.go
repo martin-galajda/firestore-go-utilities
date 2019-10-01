@@ -1,11 +1,10 @@
-package main
+package uuid
 
 import (
 	"github.com/google/uuid"
 )
 
-
-func makeUUID() string {
+func MakeUUID() string {
 	UUID, err := uuid.NewRandom()
 
 	if err != nil {
