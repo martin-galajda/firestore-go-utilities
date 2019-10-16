@@ -5,10 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/martin-galajda/firestore-go-utilities/internal/fileutils"
-	"github.com/martin-galajda/firestore-go-utilities/internal/httputils"
-	"github.com/martin-galajda/firestore-go-utilities/internal/labelbox"
-	"github.com/martin-galajda/firestore-go-utilities/internal/uuid"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,11 +13,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/martin-galajda/firestore-go-utilities/internal/fileutils"
+	"github.com/martin-galajda/firestore-go-utilities/internal/httputils"
+	"github.com/martin-galajda/firestore-go-utilities/internal/labelbox"
+	"github.com/martin-galajda/firestore-go-utilities/internal/uuid"
+
 	googleFirestore "cloud.google.com/go/firestore"
+	"github.com/martin-galajda/firestore-go-utilities/internal/firestore"
+	"github.com/martin-galajda/firestore-go-utilities/internal/googleapis"
 	"golang.org/x/net/context"
 	"google.golang.org/api/iterator"
-	"github.com/martin-galajda/firestore-go-utilities/internal/googleapis"
-	"github.com/martin-galajda/firestore-go-utilities/internal/firestore"
 )
 
 // GetImages gets images marked as important from Firestore database.
@@ -154,6 +155,15 @@ func TransformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 	}
 
 	exportedAnnotations := []labelbox.LabelboxExportAnnotation{}
+
+	filteredExportedAnnotation := []labelbox.LabelboxExportAnnotation{}
+	for _, ea := range exportedAnnotations {
+		if ea.ID != "Skip" && len(ea.Labels) > 0 {
+			filteredExportedAnnotation = append(filteredExportedAnnotation, ea)
+		}
+	}
+	exportedAnnotations = filteredExportedAnnotation
+
 	err = json.Unmarshal(fileBytes, &exportedAnnotations)
 
 	if err != nil {
@@ -168,7 +178,8 @@ func TransformLabelboxAnnotations(pathToLabelboxAnnotationsFile, pathToOutputDir
 		fileID := exportedAnnotation.ExternalID
 		rows := [][]string{}
 
-		for class, classLabels := range exportedAnnotation.Labels {
+		exportedAnnotationLabels := exportedAnnotation.Labels
+		for class, classLabels := range exportedAnnotationLabels {
 			classWithoutTranslation := labelTranslationRe.ReplaceAllString(class, "")
 			classWithoutTranslation = regexp.MustCompile(`\s`).ReplaceAllString(classWithoutTranslation, "")
 			classWithoutTranslation = strings.ToLower(classWithoutTranslation)

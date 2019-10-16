@@ -32,7 +32,7 @@ func parseCLIFlags() {
 	command = flag.String(
 		"command",
 		"",
-		"Command to execute. One of the [get-images, make-labelbox-labels, labelbox-annotations-to-validation-annotations].",
+		"Command to execute. One of the [get-images, make-labelbox-labels, labelbox-annotations-to-validation-annotations, export-labelbox-dataset-rows].",
 	)
 
 	pathToInputsFile = flag.String(
@@ -46,6 +46,7 @@ func parseCLIFlags() {
 		"./out/class-descriptions-labelbox.json",
 		"Path to the file containing labels for OpenImages in form of original CSV file.",
 	)
+
 
 	flag.Parse()
 }

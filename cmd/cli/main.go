@@ -13,19 +13,19 @@ import (
 )
 
 var pathToFirebaseConfigFile, firebaseProjectID, command, datasetName *string
-var pathToOutputDir, pathToOutputFile, pathToInputsFile, pathToLabelboxLabelsOutputFile *string
+var pathToOutputDir, pathToInputsFile, pathToLabelboxLabelsOutputFile *string
 var ctx context.Context
 var firestoreClient *firestore.Client
 var translator googleapis.Translator
 
 func init() {
 	parseCLIFlags()
+	ctx = context.Background()
 
-	ctx, firestoreClient, translator = initGoogleApiClients()
+	firestoreClient, translator = mustInitGoogleAPIClients(ctx)
 }
 
-func initGoogleApiClients() (context.Context, *firestore.Client, googleapis.Translator) {
-	ctx := context.Background()
+func mustInitGoogleAPIClients(ctx context.Context) (*firestore.Client, googleapis.Translator) {
 
 	firestoreClient, err := googleapis.NewFirestoreClient(ctx, *firebaseProjectID, *pathToFirebaseConfigFile)
 
@@ -35,7 +35,7 @@ func initGoogleApiClients() (context.Context, *firestore.Client, googleapis.Tran
 
 	translator := googleapis.NewTranslator(ctx, *pathToFirebaseConfigFile)
 
-	return ctx, firestoreClient, translator
+	return firestoreClient, translator
 }
 
 func main() {

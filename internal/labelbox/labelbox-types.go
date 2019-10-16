@@ -2,6 +2,10 @@ package labelbox
 
 import "github.com/martin-galajda/firestore-go-utilities/internal/mathutils"
 
+import "encoding/json"
+
+import "fmt"
+
 type LabelboxToolDef struct {
 	Mid             string `json:"mid"`
 	Name            string `json:"name"`
@@ -35,8 +39,23 @@ type LabelboxExportLabel struct {
 type LabelboxExportAnnotation struct {
 	ID         string                           `json:"ID"`
 	ImageURL   string                           `json:"Labeled Data"`
-	Labels     map[string][]LabelboxExportLabel `json:"Label"`
+	Labels     map[string][]LabelboxExportLabel `json:"Label,omitempty"`
+	// Labels     interface{} 											`json:"Label,omitempty"`
 	ExternalID string                           `json:"External ID"`
+}
+
+type labelboxExportAnnotation LabelboxExportAnnotation
+
+func (annotation *LabelboxExportAnnotation) UnmarshalJSON(b []byte) error {
+	var lbea labelboxExportAnnotation
+	if err := json.Unmarshal(b, &lbea); err != nil {
+		fmt.Println(err)
+		*annotation = LabelboxExportAnnotation{ID: "Skip"}
+		return nil
+	}
+
+	*annotation = LabelboxExportAnnotation(lbea)
+	return nil
 }
 
 // GetBoundingBoxPoints returns Geometry of topleft and bottomright point of the bounding box

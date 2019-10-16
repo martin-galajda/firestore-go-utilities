@@ -2,12 +2,14 @@ package fileutils
 
 import (
 	"fmt"
+	"strings"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"regexp"
+	"io/ioutil"
 
 	"encoding/json"
 )
@@ -92,4 +94,38 @@ func WriteJSON(filename *string, v interface{}) error {
 	err := encoder.Encode(v)
 
 	return err
+}
+
+// ReadFileAsText reads content of the file into string.
+func ReadFileAsText(pathToFile string) (string, error) {
+	bytes, err := ioutil.ReadFile(pathToFile)
+
+	if err != nil {
+		return "", err
+	}
+
+	fileContent := string(bytes)
+
+	return fileContent, nil
+}
+
+// GetFilePathsInDirWithExt gets slice of absolute path to files
+// contained in the given directory 
+// and that have matching extension that is provided to the function.
+func GetFilePathsInDirWithExt(pathToDir, ext string) ([]string, error) {
+	filesInDir, err := ioutil.ReadDir(pathToDir)
+
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]string, 0, len(filesInDir))
+
+	for _, fileInfo := range filesInDir {
+		if strings.Contains(fileInfo.Name(), ext) {
+			results = append(results, path.Join(pathToDir, fileInfo.Name()))
+		}
+	}
+
+	return results, nil
 }

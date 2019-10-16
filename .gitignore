@@ -9,3 +9,6 @@ workspace/*
 
 bin/*
 !bin/.gitkeep
+
+/data/openimages-resources/openimages-test-images
+!/data/openimages-resources/openimages-test-images/.gitkeep
