@@ -90,6 +90,7 @@ func WriteJSON(filename *string, v interface{}) error {
 	file := CreateFile(filename)
 
 	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "    ")
 
 	err := encoder.Encode(v)
 

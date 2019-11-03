@@ -34,5 +34,6 @@ Note: you need to have secrets in place to run these programs.
 1. Run `make run-make-labelbox-labels` from the root to transform labels from Open Images to JSON file that can be imported to Labelbox when creating new project for annotating.
 2. Run `make run-labelbox-annotations-to-validation` to transform manually exported annotations from Labelbox to format that is needed for our scripts.
 3. Run `make run-get-images` to download annotated images from Firestore.
+4. Run `go run cmd/export-firestore-dataset/main.go` to export collected dataset from Firestore to /data/collected-dataset.
 
 Every program in `cmd` directory can be ran as `go run cmd/<name_of_the_program>` from the root directory.
